@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { fabric } from 'fabric'
+import * as fabric from 'fabric'
 import './App.css'
 /* eslint-disable react-hooks/exhaustive-deps */
 
@@ -49,7 +49,8 @@ function App() {
   useEffect(() => {
     if (!canvas) return
     const listener = (e) => {
-      if (e.target && e.target.type === 'path') {
+      if (e.path && e.path.type === 'path') {
+        e.path.lineType = lineType
         setCounts((prev) => ({
           ...prev,
           [lineType]: prev[lineType] + 1
@@ -76,6 +77,28 @@ function App() {
     link.href = data
     link.download = 'layout.png'
     link.click()
+  }
+
+  const undoLast = () => {
+    if (!canvas) return
+    const objects = canvas.getObjects()
+    if (objects.length === 0) return
+    const last = objects[objects.length - 1]
+    if (last.lineType) {
+      setCounts((prev) => ({
+        ...prev,
+        [last.lineType]: Math.max(prev[last.lineType] - 1, 0)
+      }))
+    }
+    canvas.remove(last)
+    canvas.requestRenderAll()
+  }
+
+  const clearCanvas = () => {
+    if (!canvas) return
+    canvas.getObjects().forEach((obj) => canvas.remove(obj))
+    canvas.requestRenderAll()
+    setCounts({ gutter: 0, roof: 0, bush: 0 })
   }
 
   return (
@@ -129,7 +152,17 @@ function App() {
         style={{ border: '1px solid #ccc', marginTop: '1rem', touchAction: 'none' }}
       />
       <div style={{ marginTop: '1rem' }}>
+        <button onClick={undoLast} style={{ marginRight: '0.5rem' }}>Undo</button>
+        <button onClick={clearCanvas} style={{ marginRight: '0.5rem' }}>Clear</button>
         <button onClick={exportImage}>Export PNG</button>
+      </div>
+      <div style={{ marginTop: '1rem' }}>
+        <strong>Segments:</strong>
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+          <li>Gutter: {counts.gutter}</li>
+          <li>Pitched Roof: {counts.roof}</li>
+          <li>Bush/Ground: {counts.bush}</li>
+        </ul>
       </div>
       <div style={{ marginTop: '1rem', fontSize: '1.2rem' }}>
         Estimated Cost: ${estimate}
